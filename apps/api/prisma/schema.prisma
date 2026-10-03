@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TickerList {
+  WATCHLIST
+  PURCHASED
+}
+
+enum Verdict {
+  PASS
+  PASS_WITH_WARNINGS
+  FAIL
+}
+
+enum Impact {
+  SUPPORTIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum ColorStatus {
+  GREEN
+  GRAY
+  RED
+}
+
+enum MetricGroup {
+  VALUATION
+  PROFITABILITY
+  STABILITY
+  RISK_MARKET
+}
+
+enum EventType {
+  NEWS
+  REPORT
+  PRICE_ALERT
+}
+
+model User {
+  id                String             @id @default(cuid())
+  login             String             @unique
+  passwordHash      String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  sessions          Session[]
+  tickers           Ticker[]
+  telegramLink      TelegramLink?
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  tokenHash   String   @unique
+  userId      String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Ticker {
+  id                 String       @id @default(cuid())
+  userId             String
+  symbol             String
+  companyName        String
+  exchange           String?
+  list               TickerList   @default(WATCHLIST)
+  thesis             String?
+  colorStatus        ColorStatus  @default(GRAY)
+  colorChangedAt     DateTime?
+  lastClosePrice     Decimal?     @db.Decimal(18, 6)
+  latestPrice        Decimal?     @db.Decimal(18, 6)
+  priceUpdatedAt     DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses           Analysis[]
+  events             MarketEvent[]
+  metricSnapshots    MetricSnapshot[]
+  notes              Note[]
+
+  @@unique([userId, symbol])
+  @@index([userId, list])
+}
+
+model Analysis {
+  id          String   @id @default(cuid())
+  tickerId    String
+  verdict     Verdict
+  summary     String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+  ticker      Ticker   @relation(fields: [tickerId], references: [id], onDelete: Cascade)
+  criteria    AnalysisCriterion[]
+
+  @@index([tickerId, createdAt])
+}
+
+model AnalysisCriterion {
+  id          String   @id @default(cuid())
+  analysisId  String
+  key         String
+  label       String
+  passed      Boolean
+  detail      String   @db.Text
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@unique([analysisId, key])
+}
+
+model MarketEvent {
+  id            String    @id @default(cuid())
+  tickerId      String
+  type          EventType
+  title         String
+  description   String?   @db.Text
+  sourceUrl     String?
+  publishedAt   DateTime?
+  impact        Impact?
+  impactReason  String?   @db.Text
+  analyzedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  ticker        Ticker    @relation(fields: [tickerId], references: [id], onDelete: Cascade)
+
+  @@index([tickerId, publishedAt])
+}
+
+model MetricSnapshot {
+  id            String       @id @default(cuid())
+  tickerId      String
+  periodLabel   String?
+  publishedAt   DateTime     @default(now())
+  metrics       MetricValue[]
+  ticker        Ticker       @relation(fields: [tickerId], references: [id], onDelete: Cascade)
+
+  @@index([tickerId, publishedAt])
+}
+
+model MetricValue {
+  id              String        @id @default(cuid())
+  snapshotId      String
+  group           MetricGroup
+  key             String
+  label           String
+  value           String
+  unit            String?
+  change          String?
+  changeDirection String?
+  snapshot        MetricSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, key])
+}
+
+model Note {
+  id         String   @id @default(cuid())
+  tickerId   String
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+  ticker     Ticker   @relation(fields: [tickerId], references: [id], onDelete: Cascade)
+
+  @@index([tickerId, createdAt])
+}
+
+model TelegramLink {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  chatId              String?   @unique
+  verificationToken   String?   @unique
+  verifiedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

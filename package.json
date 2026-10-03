@@ -1,0 +1,13 @@
+{
+  "name": "stock-level1-tracker",
+  "private": true,
+  "workspaces": ["apps/api", "apps/web"],
+  "scripts": {
+    "dev:api": "npm run dev --workspace @stock-level1/api",
+    "dev:web": "npm run dev --workspace @stock-tracker/web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "db:up": "docker compose -f docker/docker-compose.yml up -d db",
+    "db:down": "docker compose -f docker/docker-compose.yml down"
+  }
+}

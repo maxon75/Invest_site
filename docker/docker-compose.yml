@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: stock_level1
+    ports:
+      - "5432:5432"
+    volumes:
+      - stock_level1_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d stock_level1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  stock_level1_data:
